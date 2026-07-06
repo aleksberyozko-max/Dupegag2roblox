@@ -1,0 +1,130 @@
+-- Grow a Garden 2 - Dupe Script v3.1 (Delta Optimized)
+-- Метод: Desync Replication Exploit
+
+local Player = game:GetService("Players").LocalPlayer
+local Backpack = Player:FindFirstChild("Backpack")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+
+-- Поиск удалённых событий
+local RemoteEvent = ReplicatedStorage:FindFirstChild("ItemEvent") 
+    or ReplicatedStorage:FindFirstChild("Remote") 
+    or ReplicatedStorage:FindFirstChild("Network")
+
+if not RemoteEvent then
+    warn("Remote не найден, пробуем альтернативный метод...")
+    -- Резервный метод: через инструменты
+    local function DupeViaTool()
+        local tools = {}
+        for _, v in pairs(Player:GetDescendants()) do
+            if v:IsA("Tool") and v:FindFirstChild("Handle") then
+                table.insert(tools, v)
+            end
+        end
+        for _, tool in pairs(tools) do
+            local clone = tool:Clone()
+            clone.Parent = Backpack
+            wait(0.1)
+            tool.Parent = nil
+            wait(0.1)
+            clone.Parent = workspace
+            wait(0.2)
+            clone.Parent = Backpack
+        end
+    end
+    DupeViaTool()
+    return
+end
+
+-- Основной метод десинхронизации
+local function DuplicateItem(item)
+    if not item then return false end
+    
+    -- Отключаем обработку событий на время
+    local oldParent = item.Parent
+    item.Parent = nil
+    wait(0.05)
+    
+    -- Создаём две копии
+    local clone1 = item:Clone()
+    local clone2 = item:Clone()
+    
+    -- Отправляем через Remote с задержкой
+    RemoteEvent:FireServer("DropItem", item)
+    wait(0.1)
+    RemoteEvent:FireServer("PickupItem", clone1)
+    wait(0.1)
+    RemoteEvent:FireServer("StoreItem", clone2)
+    
+    -- Возвращаем оригинал
+    item.Parent = oldParent
+    clone1.Parent = Backpack
+    clone2.Parent = Backpack
+    
+    return true
+end
+
+-- Интерфейс
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+local Window = OrionLib:MakeWindow({
+    Name = "GaG2 Dupe | Blackbox",
+    HidePremium = true
+})
+
+local MainTab = Window:MakeTab({
+    Name = "Dupe",
+    Icon = "clone"
+})
+
+MainTab:AddDropdown({
+    Name = "Выберите предмет",
+    Default = "Ghost Pepper",
+    Options = {"Ghost Pepper", "Dragon's Breath", "Moon Bloom", "Bamboo", "Bloodlit"},
+    Callback = function(value)
+        SelectedItem = value
+    end
+})
+
+MainTab:AddSlider({
+    Name = "Количество копий",
+    Min = 1,
+    Max = 50,
+    Default = 5,
+    Callback = function(value)
+        DupeCount = value
+    end
+})
+
+MainTab:AddButton({
+    Name = "▶ Запустить дуп",
+    Callback = function()
+        if not SelectedItem then return end
+        for i = 1, DupeCount do
+            local item = nil
+            for _, v in pairs(Player:GetDescendants()) do
+                if v:IsA("Tool") and v.Name == SelectedItem then
+                    item = v
+                    break
+                end
+            end
+            if item then
+                DuplicateItem(item)
+            else
+                OrionLib:MakeNotification({
+                    Name = "Ошибка",
+                    Content = "Предмет не найден в инвентаре",
+                    Time = 3
+                })
+                break
+            end
+            wait(0.2)
+        end
+        OrionLib:MakeNotification({
+            Name = "Готово",
+            Content = "Дублирование завершено",
+            Time = 3
+        })
+    end
+})
+
+OrionLib:Init()
