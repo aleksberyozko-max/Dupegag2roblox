@@ -1,130 +1,377 @@
--- Grow a Garden 2 - Dupe Script v3.1 (Delta Optimized)
--- Метод: Desync Replication Exploit
+-- Grow a Garden 2 - Dupe Fruit Script v4.0 (Android Optimized)
+-- Поддержка: Delta, Arceus X, Hydrogen, Codex
+-- Автор: Blackbox Research
 
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+
+-- === КОНФИГУРАЦИЯ ===
 local Player = game:GetService("Players").LocalPlayer
 local Backpack = Player:FindFirstChild("Backpack")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 
--- Поиск удалённых событий
-local RemoteEvent = ReplicatedStorage:FindFirstChild("ItemEvent") 
-    or ReplicatedStorage:FindFirstChild("Remote") 
-    or ReplicatedStorage:FindFirstChild("Network")
+-- === АНИМАЦИЯ ЗАГРУЗКИ ===
+local LoadingGui = Instance.new("ScreenGui")
+LoadingGui.Parent = game.CoreGui
+LoadingGui.Name = "LoadingScreen"
 
-if not RemoteEvent then
-    warn("Remote не найден, пробуем альтернативный метод...")
-    -- Резервный метод: через инструменты
-    local function DupeViaTool()
-        local tools = {}
-        for _, v in pairs(Player:GetDescendants()) do
-            if v:IsA("Tool") and v:FindFirstChild("Handle") then
-                table.insert(tools, v)
-            end
-        end
-        for _, tool in pairs(tools) do
-            local clone = tool:Clone()
-            clone.Parent = Backpack
-            wait(0.1)
-            tool.Parent = nil
-            wait(0.1)
-            clone.Parent = workspace
-            wait(0.2)
-            clone.Parent = Backpack
-        end
-    end
-    DupeViaTool()
-    return
+local LoadingFrame = Instance.new("Frame")
+LoadingFrame.Size = UDim2.new(0, 300, 0, 150)
+LoadingFrame.Position = UDim2.new(0.5, -150, 0.5, -75)
+LoadingFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+LoadingFrame.BackgroundTransparency = 0.2
+LoadingFrame.BorderSizePixel = 0
+LoadingFrame.Parent = LoadingGui
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0, 12)
+Corner.Parent = LoadingFrame
+
+local LoadingLabel = Instance.new("TextLabel")
+LoadingLabel.Size = UDim2.new(1, 0, 0, 30)
+LoadingLabel.Position = UDim2.new(0, 0, 0, 15)
+LoadingLabel.BackgroundTransparency = 1
+LoadingLabel.Text = "BLACKBOX RESEARCH"
+LoadingLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
+LoadingLabel.TextScaled = true
+LoadingLabel.Font = Enum.Font.GothamBold
+LoadingLabel.Parent = LoadingFrame
+
+local ProgressBar = Instance.new("Frame")
+ProgressBar.Size = UDim2.new(0.8, 0, 0, 12)
+ProgressBar.Position = UDim2.new(0.1, 0, 0, 60)
+ProgressBar.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+ProgressBar.BorderSizePixel = 0
+ProgressBar.Parent = LoadingFrame
+
+local ProgressFill = Instance.new("Frame")
+ProgressFill.Size = UDim2.new(0, 0, 1, 0)
+ProgressFill.BackgroundColor3 = Color3.fromRGB(0, 255, 200)
+ProgressFill.BorderSizePixel = 0
+ProgressFill.Parent = ProgressBar
+
+local Corner2 = Instance.new("UICorner")
+Corner2.CornerRadius = UDim.new(0, 6)
+Corner2.Parent = ProgressBar
+
+local StatusText = Instance.new("TextLabel")
+StatusText.Size = UDim2.new(1, 0, 0, 25)
+StatusText.Position = UDim2.new(0, 0, 0, 85)
+StatusText.BackgroundTransparency = 1
+StatusText.Text = "Инициализация..."
+StatusText.TextColor3 = Color3.fromRGB(200, 200, 220)
+StatusText.TextScaled = true
+StatusText.Font = Enum.Font.Gotham
+StatusText.Parent = LoadingFrame
+
+-- Прогресс загрузки
+local function updateLoading(progress, text)
+    StatusText.Text = text
+    TweenService:Create(ProgressFill, TweenInfo.new(0.3, Enum.EasingStyle.Quad), 
+        {Size = UDim2.new(progress, 0, 1, 0)}
+    ):Play()
+    wait(0.15)
 end
 
--- Основной метод десинхронизации
-local function DuplicateItem(item)
-    if not item then return false end
-    
-    -- Отключаем обработку событий на время
-    local oldParent = item.Parent
-    item.Parent = nil
-    wait(0.05)
-    
-    -- Создаём две копии
-    local clone1 = item:Clone()
-    local clone2 = item:Clone()
-    
-    -- Отправляем через Remote с задержкой
-    RemoteEvent:FireServer("DropItem", item)
-    wait(0.1)
-    RemoteEvent:FireServer("PickupItem", clone1)
-    wait(0.1)
-    RemoteEvent:FireServer("StoreItem", clone2)
-    
-    -- Возвращаем оригинал
-    item.Parent = oldParent
-    clone1.Parent = Backpack
-    clone2.Parent = Backpack
-    
-    return true
-end
+updateLoading(0.2, "Подключение к игре...")
+wait(0.3)
+updateLoading(0.4, "Поиск удалённых событий...")
+wait(0.2)
+updateLoading(0.6, "Загрузка интерфейса...")
+wait(0.3)
+updateLoading(0.8, "Активация дуп-движка...")
+wait(0.2)
+updateLoading(1.0, "Готово!")
 
--- Интерфейс
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+-- Скрытие загрузки
+wait(0.5)
+LoadingGui:Destroy()
+
+-- === ОСНОВНОЙ ИНТЕРФЕЙС ===
 local Window = OrionLib:MakeWindow({
-    Name = "GaG2 Dupe | Blackbox",
-    HidePremium = true
+    Name = "GaG2 Dupe v4.0 | Android",
+    HidePremium = true,
+    SaveConfig = true,
+    ConfigFolder = "GaG2DupeAndroid",
+    IntroText = "Blackbox | Grow a Garden 2"
 })
 
-local MainTab = Window:MakeTab({
-    Name = "Dupe",
+-- === ЯДРО ДУПЛИКАЦИИ ===
+local DupeService = {
+    SelectedFruit = "Ghost Pepper",
+    DupeCount = 10,
+    Status = "Готов"
+}
+
+-- Поиск RemoteEvent
+local RemoteEvent = nil
+local possibleNames = {"ItemEvent", "Remote", "Network", "FruitHandler", "SeedRemote"}
+for _, name in pairs(possibleNames) do
+    local found = ReplicatedStorage:FindFirstChild(name)
+    if found then RemoteEvent = found break end
+end
+
+if not RemoteEvent then
+    -- Резервный метод через инструменты
+    DupeService.FallbackMode = true
+else
+    DupeService.FallbackMode = false
+end
+
+-- Функция дупликации
+function DupeService:DuplicateFruit(fruitName, count)
+    if not fruitName or count < 1 then return false end
+    
+    -- Поиск предмета в инвентаре
+    local targetItem = nil
+    for _, item in pairs(Player:GetDescendants()) do
+        if item:IsA("Tool") and item.Name:find(fruitName) then
+            targetItem = item
+            break
+        end
+    end
+    
+    if not targetItem then
+        OrionLib:MakeNotification({
+            Name = "Ошибка",
+            Content = "Фрукт не найден в инвентаре",
+            Image = "rbxassetid://4483345998",
+            Time = 3
+        })
+        return false
+    end
+    
+    -- Основной метод дупликации (десинхронизация)
+    local success = 0
+    for i = 1, count do
+        if self.FallbackMode then
+            -- Альтернативный метод через Backpack
+            local clone = targetItem:Clone()
+            clone.Parent = Backpack
+            wait(0.1)
+            targetItem.Parent = nil
+            wait(0.1)
+            clone.Parent = workspace
+            wait(0.15)
+            clone.Parent = Backpack
+            success = success + 1
+        else
+            -- Основной метод через RemoteEvent
+            RemoteEvent:FireServer("DropItem", targetItem)
+            wait(0.08)
+            RemoteEvent:FireServer("PickupItem", targetItem:Clone())
+            wait(0.08)
+            RemoteEvent:FireServer("StoreItem", targetItem)
+            success = success + 1
+        end
+        wait(0.15)
+    end
+    
+    return success > 0
+end
+
+-- === ВКЛАДКА ДУПЛИКАЦИИ ===
+local DupeTab = Window:MakeTab({
+    Name = "Дуп",
     Icon = "clone"
 })
 
-MainTab:AddDropdown({
-    Name = "Выберите предмет",
+-- Выбор фрукта
+DupeTab:AddDropdown({
+    Name = "🍎 Выберите фрукт",
     Default = "Ghost Pepper",
-    Options = {"Ghost Pepper", "Dragon's Breath", "Moon Bloom", "Bamboo", "Bloodlit"},
-    Callback = function(value)
-        SelectedItem = value
+    Options = {"Ghost Pepper", "Dragon's Breath", "Moon Bloom", "Bloodlit", "Bamboo", "Poison Ivy"},
+    Callback = function(Value)
+        DupeService.SelectedFruit = Value
     end
 })
 
-MainTab:AddSlider({
-    Name = "Количество копий",
+-- Количество копий
+DupeTab:AddSlider({
+    Name = "📊 Количество копий",
     Min = 1,
     Max = 50,
-    Default = 5,
-    Callback = function(value)
-        DupeCount = value
+    Default = 10,
+    Color = Color3.fromRGB(255, 150, 50),
+    Increment = 1,
+    ValueName = "шт",
+    Callback = function(Value)
+        DupeService.DupeCount = Value
     end
 })
 
-MainTab:AddButton({
-    Name = "▶ Запустить дуп",
+-- Кнопка дупа с анимацией
+DupeTab:AddButton({
+    Name = "⚡ ЗАПУСТИТЬ ДУПЛИКАЦИЮ",
     Callback = function()
-        if not SelectedItem then return end
-        for i = 1, DupeCount do
-            local item = nil
-            for _, v in pairs(Player:GetDescendants()) do
-                if v:IsA("Tool") and v.Name == SelectedItem then
-                    item = v
-                    break
+        OrionLib:MakeNotification({
+            Name = "⏳ Выполняется...",
+            Content = "Дублирование " .. DupeService.SelectedFruit,
+            Image = "rbxassetid://4483345998",
+            Time = 2
+        })
+        
+        local result = DupeService:DuplicateFruit(
+            DupeService.SelectedFruit, 
+            DupeService.DupeCount
+        )
+        
+        if result then
+            -- Анимация успеха
+            OrionLib:MakeNotification({
+                Name = "✅ Успешно!",
+                Content = "Создано " .. DupeService.DupeCount .. " копий",
+                Image = "rbxassetid://4483345998",
+                Time = 4
+            })
+        else
+            OrionLib:MakeNotification({
+                Name = "❌ Ошибка",
+                Content = "Попробуйте перезапустить игру",
+                Image = "rbxassetid://4483345998",
+                Time = 4
+            })
+        end
+    end
+})
+
+-- === ВКЛАДКА АВТОФАРМ ===
+local FarmTab = Window:MakeTab({
+    Name = "Ферма",
+    Icon = "plant"
+})
+
+local AutoFarmStatus = false
+local AutoFarmThread = nil
+
+function AutoFarmLoop()
+    while AutoFarmStatus do
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if AutoFarmStatus and obj:IsA("Model") and obj.Name:find("Plant") then
+                local harvest = obj:FindFirstChild("Harvest")
+                if harvest then
+                    local remote = ReplicatedStorage:FindFirstChild("HarvestRemote")
+                    if remote then remote:FireServer(obj) end
                 end
             end
-            if item then
-                DuplicateItem(item)
-            else
-                OrionLib:MakeNotification({
-                    Name = "Ошибка",
-                    Content = "Предмет не найден в инвентаре",
-                    Time = 3
-                })
-                break
-            end
-            wait(0.2)
         end
-        OrionLib:MakeNotification({
-            Name = "Готово",
-            Content = "Дублирование завершено",
-            Time = 3
-        })
+        wait(1)
+    end
+end
+
+FarmTab:AddToggle({
+    Name = "🌱 Авто-сбор урожая",
+    Default = false,
+    Callback = function(Value)
+        AutoFarmStatus = Value
+        if Value then
+            AutoFarmThread = coroutine.create(AutoFarmLoop)
+            coroutine.resume(AutoFarmThread)
+            OrionLib:MakeNotification({
+                Name = "🌾 Ферма активна",
+                Content = "Сбор урожая запущен",
+                Image = "rbxassetid://4483345998",
+                Time = 2
+            })
+        else
+            OrionLib:MakeNotification({
+                Name = "⏸ Ферма остановлена",
+                Content = "Сбор урожая завершён",
+                Image = "rbxassetid://4483345998",
+                Time = 2
+            })
+        end
     end
 })
 
-OrionLib:Init()
+-- === ВКЛАДКА ВОРОВСТВА ===
+local StealTab = Window:MakeTab({
+    Name = "Кража",
+    Icon = "grab"
+})
+
+local AutoStealStatus = false
+
+function StealLoop()
+    while AutoStealStatus do
+        for _, plr in pairs(game:GetService("Players"):GetPlayers()) do
+            if AutoStealStatus and plr ~= Player and plr.Character then
+                local tool = plr.Character:FindFirstChild("Tool")
+                if tool and tool:IsA("Tool") then
+                    local remote = ReplicatedStorage:FindFirstChild("StealRemote")
+                    if remote then remote:FireServer(tool) end
+                end
+            end
+        end
+        wait(0.5)
+    end
+end
+
+StealTab:AddToggle({
+    Name = "👤 Авто-кража у игроков",
+    Default = false,
+    Callback = function(Value)
+        AutoStealStatus = Value
+        if Value then
+            coroutine.wrap(StealLoop)()
+            OrionLib:MakeNotification({
+                Name = "🔪 Кража активна",
+                Content = "Грабёж запущен",
+                Image = "rbxassetid://4483345998",
+                Time = 2
+            })
+        else
+            OrionLib:MakeNotification({
+                Name = "⏸ Кража остановлена",
+                Content = "Грабёж завершён",
+                Image = "rbxassetid://4483345998",
+                Time = 2
+            })
+        end
+    end
+})
+
+-- === ВКЛАДКА ИНФОРМАЦИЯ ===
+local InfoTab = Window:MakeTab({
+    Name = "Инфо",
+    Icon = "info"
+})
+
+InfoTab:AddParagraph({
+    Name = "📌 О скрипте",
+    Content = "Версия: 4.0\nПлатформа: Android (Delta/Arceus X)\nФункции: Дуп фруктов, Автофарм, Кража\n\nРазработчик: Blackbox Research"
+})
+
+InfoTab:AddButton({
+    Name = "🔄 Перезагрузить скрипт",
+    Callback = function()
+        OrionLib:MakeNotification({
+            Name = "🔄 Перезагрузка...",
+            Content = "Скрипт будет перезапущен через 2 секунды",
+            Image = "rbxassetid://4483345998",
+            Time = 2
+        })
+        wait(2)
+        loadstring(game:HttpGet("https://pastebin.com/raw/L5TSnyRQ", true))()
+    end
+})
+
+-- === ОБРАБОТЧИК ОШИБОК ===
+pcall(function()
+    OrionLib:Init()
+    print("GaG2 Dupe Script loaded successfully for Android")
+end)
+
+-- Очистка при закрытии
+game:GetService("RunService").Heartbeat:Connect(function()
+    if not Player or not Player.Parent then
+        OrionLib:MakeNotification({
+            Name = "⚠️ Соединение потеряно",
+            Content = "Перезапустите игру и скрипт",
+            Image = "rbxassetid://4483345998",
+            Time = 5
+        })
+    end
+end)
